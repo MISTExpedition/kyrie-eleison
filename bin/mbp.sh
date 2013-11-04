@@ -1,37 +1,16 @@
 #!/bin/bash
 
-#
-# Cruise  Metadata
-#
-VESSEL="REVELLE"
-INST="edu.ucsd.sio"
-PLATFORM="Ship"
-SONAR="Simrad - EM122"
-SONAR_VER="?"
-CRUSE_ID="RR1310"
-CRUISE_NAME="Some Seamount Cruise"
-PI="Diego Melgar"
-PI_INST="edu.ucsd.sio"
-CLIENT="edu.ucsd.sio"
-	
-
-#
-# GMT settings
-#
-REGION="-75/-71/-38/-32"
-PROJ="m80i"
-
 # 
 # Filenames and directories
 #
 OUT_DIR="data"
 FILE_LIST="file_list"
+DATA_LIST="datalist.raw"
 UNPROCESSED_LIST="unprocessed_list.mb-1"
 PROCESSED_LIST="processed_list.mb-1"
 DIFF_CPT="diff_2_files.cpt"
 DIFF_GRD="difference_2_files.grd"
 DIFF_PS="difference_2_files.ps"
-
 
 all_to_59() {
 	mkdir -p ${OUT_DIR}
@@ -84,6 +63,32 @@ get_svp() {
 	cd ..
 }
 
+get_list() {
+	cd ${OUT_DIR}
+	for i in $( ls *.mb59 ); do
+		echo "${i} 59" >> ${DATA_LIST}
+	done
+	cd ..
+}
+
+mb_clean() {
+	cd ${OUT_DIR}
+	if [ ! -f ${DATA_LIST} ]; then
+		get_list
+	fi
+	mbclean -I${DATA_LIST} -F-1 -M1 -C3.5 -D0.01/0.20 -G0.80/1.20 -V
+	cd ..
+}
+
+svp_set() {
+	cd ${OUT_DIR}
+	for i in $( ls *.mb59 ); do
+		echo Processing ${i} ...
+		mvprocess -F59 -V -I${i}
+	done
+	cd ..
+}
+
 unprocessed_list() {
 	cd ${OUT_DIR}
 	for i in $( ls *e.mb59); do
@@ -101,16 +106,22 @@ processed_list() {
 }
 
 grid_unprocessed_data() {
-mbgrid -I${UNPROCESSED_LIST} -A2 \
-	-C0/1 \
-	-E100/100/"meters" \
-	-F5 \
-	-G3 \
-	-N \
-	-R${REGION} \
-	-S1 \
-	-V \
-	-Ounprocessed
+	cd ${OUT_DIR}
+		if [ ! -f ${UNPROCESSED_LIST} ]; then
+			unprocessed_list
+		fi
+
+		mbgrid -I${UNPROCESSED_LIST} -A2 \
+			-C0/1 \
+			-E100/100/"meters" \
+			-F5 \
+			-G3 \
+			-N \
+			-R${REGION} \
+			-S1 \
+			-V \
+			-Ounprocessed
+	cd ..
 }
 
 grid_processed_data() {
@@ -138,8 +149,54 @@ difference_grids() {
 	grdinfo difference.grd -V
 }
 
-all_to_59
-fastfiles
-add_meta
-get_svp
+batch() {
+	for cmd in $BATCH_COMMANDS; do
+		echo Processing command:$cmd ...
+		$cmd
+	done
+}
+	
+usage() {
+	echo "mbp.sh - A shell script for processing multibeam data using MB-System."
+	echo "         http://www.ldeo.columbia.edu/res/pi/MB-System/"
+	echo 
+	echo "usage: mbp.sh [-h] [COMMAND]..."
+	echo
+	echo "  -h     display this help message"
+	echo
+	echo "  [COMMAND] is one of:"
+	echo "  all_to_59 : convert .all to .mb59, uses mbcopy"
+	echo "  fastfiles : extracts fast bayhymetry and navigation, uses mbdatalist"
+	echo "  add_meta  : applies metadata, uses mbset"
+	echo "  get_svp   : extracts sound velocity profile, uses mbsvplist"
+	echo "  get_list  : generates the list of data files (needed for mb_clean)"
+	echo "  mb_clean  : processes automated quality check, uses mbclean"
+	echo "  batch     : batch processes these commands : " ${BATCH_COMMANDS}
+	echo
+	echo "examples:"
+	echo
+	echo "  mbp.sh all_to_59 fastfiles add_metadata    (converts, extracts fastfiles and applied metadata)"
+	echo "  mbp.sh batch                               (batch process all data)"
+	exit 1
+}
+
+if [ -f cruise.info ]; then 
+	source cruise.info
+else
+	echo "Cruise parameter file 'cruise' not found"
+fi
+
+if [ "$#" == "0" ] || [ "$1" == "-h" ]; then
+	usage
+fi
+
+
+while (( "$#" )); do
+	$1
+	if [ $? -ne 0 ]; then
+        	echo "error with $1"
+		exit $?
+	fi
+	shift
+done
 

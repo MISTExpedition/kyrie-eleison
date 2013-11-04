@@ -1,0 +1,35 @@
+#!/bin/bash
+
+#
+# Cruise  Metadata
+#
+VESSEL="REVELLE"
+INST="edu.ucsd.sio"
+PLATFORM="Ship"
+SONAR="Simrad - EM122"
+SONAR_VER="?"
+CRUSE_ID="RR1310"
+CRUISE_NAME="Some Seamount Cruise"
+PI="Diego Melgar"
+PI_INST="edu.ucsd.sio"
+CLIENT="edu.ucsd.sio"
+	
+
+#
+# GMT settings
+#
+REGION="148/150/10/11"
+PROJ="m80i"
+
+#
+# The ordered list of commands to run by default
+#
+
+BATCH_COMMANDS=\
+"all_to_59
+fastfiles
+add_meta
+get_svp
+get_list
+mb_clean"
+

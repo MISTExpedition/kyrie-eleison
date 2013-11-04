@@ -3,7 +3,7 @@
 # 
 # Filenames and directories
 #
-OUT_DIR="data"
+OUT_DIR="${PWD}/data"
 FILE_LIST="file_list"
 DATA_LIST="datalist.raw"
 UNPROCESSED_LIST="unprocessed_list.mb-1"
@@ -65,6 +65,7 @@ get_svp() {
 
 get_list() {
 	cd ${OUT_DIR}
+	rm ${DATA_LIST}
 	for i in $( ls *.mb59 ); do
 		echo "${i} 59" >> ${DATA_LIST}
 	done
@@ -183,7 +184,8 @@ usage() {
 if [ -f cruise.info ]; then 
 	source cruise.info
 else
-	echo "Cruise parameter file 'cruise' not found"
+	echo "Cruise parameter file 'cruise.info' not found"
+	exit 1
 fi
 
 if [ "$#" == "0" ] || [ "$1" == "-h" ]; then

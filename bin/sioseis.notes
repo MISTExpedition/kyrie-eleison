@@ -1,0 +1,59 @@
+SIO SEIS NOTES or how I fumbled around learning this
+
+D.Melgar Nov-2013
+
+* Need imageMagick to display raster files
+
+* look at segy metadata
+>>lsd -k 2011_252_1017_70873_CHP3.5_FLT_005.sgy
+
+* make one plot
+http://sioseis.ucsd.edu/mkplt.html
+>>mkplt.sh 2011_255_1712_70873_CHP3.5_FLT_000.sgy
+
+
+* Question: Are the FLT correlate or envelope files?
+You want evenlopes which have the source function removed with a matched filter n'est pas?
+
+* Henkart says:
+    raw: digitized but unprocessed data, no correlation filtering 
+         applied, no envelope detection;
+    filtered: data that has been correlation filtered but not 
+         envelope detected;
+    detected: data that has been filtered and envelope detected.
+
+so the *FLT* files look like "filtered" as per the definitions above. So looks like phrases
+like "correlate file" or "correlate data" correspond to "filtered" data and to the FLT files
+
+* Ok then so I need to make envelopes first, use mkenv.sh
+>>mkenv.sh 2011_255_1712_70873_CHP3.5_FLT_000.sgy
+
+this makes a file with "env-" prepended to the original file name
+
+* Ok now plot it
+>>mkplt.sh env-2011_255_1712_70873_CHP3.5_FLT_000.sgy > mkplt.log
+
+This made the plot and it looks good but threw some ERRORS/WARNINGS I put in mkplt.log
+
+* There's another script to batch process all the correlate files it's probably a good idea to 
+keep envelope and correlate files in separate directories (this is starting to look like
+Paul's webpage)
+
+>>cd ~/Chirp/NH1111_Kohler/SEGY
+>>mkdir env
+>>mkenvall.sh . ./env
+
+* Similarly you can plot them all at the same time, in this case in a plots directory, it will
+look for files with 'env-' at the beginning of the file name and with a '.segy' extension
+
+>>mkdir plots
+>>mkplt-all ./env ./plots
+
+* You can also make depth migrated plots instead of two-way travel time plots, this will be very
+handy for the cores it gives you a very nice idea of sediment thickness. Looks like penetration 
+is at the very least 20+m though I imagine this will depend on acoustic impedance of the rocks
+being chirped.
+
+>>mkdplt.sh env-2011_254_0645_70873_CHP3.5_FLT_005.sgy
+
+

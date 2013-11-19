@@ -1,5 +1,14 @@
 #!/bin/bash
 
+OUT_DIR="data"
+FILE_LIST="file_list"
+DATA_LIST="datalist.raw"
+UNPROCESSED_LIST="unprocessed_list.mb-1"
+PROCESSED_LIST="processed_list.mb-1"
+DIFF_CPT="diff_2_files.cpt"
+DIFF_GRD="difference_2_files.grd"
+DIFF_PS="difference_2_files.ps"
+
 all_to_59() {
 	for in_file in $( ls *${SONAR_SUFFIX} ); do
 		out_file=${WORK_DIR}/${in_file%.*}.mb59

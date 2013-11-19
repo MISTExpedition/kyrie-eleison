@@ -122,6 +122,20 @@ grid_processed_data() {
 		-O${PROCESSED_GRD}
 }
 
+quick_plot() {
+	mbm_plot -F-1 -I${DATA_LIST} -N -G1 -C -Q
+        ./${DATA_LIST}.cmd
+	mv ${DATA_LIST}.ps quick_plot.ps
+        display quick_plot.ps
+}
+
+quick_amplitude() {
+	mbm_plot -F-1 -I${DATA_LIST} -N -G4 -Q
+        ./${DATA_LIST}.cmd
+	mv ${DATA_LIST}.ps quick_amplitude.ps
+        display quick_amplitude.ps
+}
+
 plot_difference() {
 	makecpt -Crainbow -T-5/5/0-.5 -Z -V > ${DIFF_CPT};
 	grdimage ${DIFF_GRD} -J${PROJ} -R${REGION} -C${DIFF_CPT} -K -V  > ${DIFF_PS}
@@ -163,8 +177,8 @@ usage: mbp.sh [-h] [COMMAND]...
 
 examples:
 
-  mbp.sh all_to_59 fastfiles add_metadata    (converts, extracts fastfiles and applies metadata)
-  mbp.sh batch                               (batch process all data)
+  mbp all_to_59 fastfiles add_metadata    (converts, extracts fastfiles and applies metadata)
+  mbp batch                               (batch process all data)
 EOF
 	exit 1
 }

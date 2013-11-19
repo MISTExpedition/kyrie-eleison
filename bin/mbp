@@ -1,0 +1,212 @@
+#!/bin/bash
+
+all_to_59() {
+	for in_file in $( ls *${SONAR_SUFFIX} ); do
+		out_file=${WORK_DIR}/${in_file%.*}.mb59
+		echo Converting ${in_file} to ${out_file} ...
+		# P1 = no ping averaging, -S2 = no data used if ship speed < ~ 1 kts
+		mbcopy -P1 -F58/59 -S2 -I${in_file} -O${out_file}
+	done
+}
+
+fastfiles() {
+	cd ${WORK_DIR}
+	for in_file in $( ls *${UNPROCESSED_SUFFIX}); do
+		echo Generating fast files ${in_file} ...
+		mbdatalist -F59 -N -I${in_file}
+	done
+}
+
+add_meta() {
+	cd ${WORK_DIR}
+	for in_file in $( ls *${UNPROCESSED_SUFFIX}); do
+   		echo Applying metadata ${in_file} ...
+   		mbset -I ${in_file} \
+		      -PMETAVESSEL:${VESSEL}\
+		      -PMETAINSTITUTION:${INST}\
+		      -PMETAPLATFORM:${PLATFORM} \
+		      -PMETASONAR:${SONAR} \
+		      -PMETASONARVERSION:${SONAR_VER}\
+		      -PMETACRUISEID:${CRUISE_ID} \
+		      -PMETACRUISENAME:${CRUISE_NAME}\
+		      -PMETAPI:${PI} \
+		      -PMETAPIINSTITUTION:${PI_INST} \
+		      -PMETACLIENT:${CLIENT}
+	done
+}
+
+get_svp() {
+	cd ${WORK_DIR}
+	for in_file in $( ls *${UNPROCESSED_SUFFIX}); do
+		echo Getting SVP ${in_file} ...
+	  	mbsvplist -F59 -P -V -I${in_file}
+	done
+}
+
+mb_clean() {
+	_get_list
+	cd ${WORK_DIR}
+	mbclean -I${DATA_LIST} -F-1 -M1 -C3.5 -D0.01/0.20 -G0.80/1.20 -V
+}
+
+
+_get_list() {
+	cd ${WORK_DIR}
+	rm -f ${DATA_LIST}
+	for i in $( ls *${UNPROCESSED_SUFFIX}); do
+		echo "${i} 59" >> ${DATA_LIST}
+	done
+	cd $cwd
+}
+
+_unprocessed_list() {
+	cd ${WORK_DIR}
+	rm -f ${UNPROCESSED_LIST}
+	for i in $( ls *${UNPROCESSED_SUFFIX}); do
+		echo "$i 59" >> ${UNPROCESSED_LIST}
+	done
+}
+
+_processed_list() {
+	cd ${WORK_DIR}
+	rm -f ${PROCESSED_LIST}
+	for i in $( ls *${PROCESSED_SUFFIX}); do
+		echo "$i 59" >> ${PROCESSED_LIST}
+	done
+}
+
+process_data() {
+	cd ${WORK_DIR} 
+	for i in $( ls *${UNPROCESSED_SUFFIX}); do
+		echo Processing ${i} ...
+		mbprocess -F59 -V -I$i
+	done
+	
+}
+
+grid_unprocessed_data() {
+	_unprocessed_list
+	cd ${WORK_DIR}
+	mbgrid -I${UNPROCESSED_LIST} -A2 \
+		-C0/1 \
+		-E100/100/"meters" \
+		-F5 \
+		-G3 \
+		-N \
+		-R${REGION} \
+		-S1 \
+		-V \
+		-O${UNPROCESSED_GRD}
+}
+
+grid_processed_data() {
+	_processed_list
+	mbgrid -I${PROCESSED_LIST} -A2 \
+		-C0/1 \
+		-E100/100/"meters" \
+		-F5 \
+		-G3 \
+		-N \
+		-R${REGION} \
+		-S1 \
+		-V \
+		-O${PROCESSED_GRD}
+}
+
+plot_difference() {
+	makecpt -Crainbow -T-5/5/0-.5 -Z -V > ${DIFF_CPT};
+	grdimage ${DIFF_GRD} -J${PROJ} -R${REGION} -C${DIFF_CPT} -K -V  > ${DIFF_PS}
+	psbasemap -R${REGION} -J${PROJ} -B0.5g0.5::WeSn -O -K -V >> ${DIFF_PS}
+	psscale -D21c/8c/15c/0.4c -C${DIFF_CPT} -B1:DepthDifferrence\[m]:/:: -O -V >> ${DIFF_PS}
+}
+
+difference_grids() {
+	grdmath unprocessed.grd processed.grd SUB = difference.grd
+	grdinfo difference.grd -V
+}
+
+batch() {
+	for cmd in $BATCH_COMMANDS; do
+		echo Processing command:$cmd ...
+		$cmd
+	done
+}
+	
+usage() {
+	cat << EOF
+mbp.sh - A shell script for processing multibeam data using MB-System.
+         http://www.ldeo.columbia.edu/res/pi/MB-System/
+
+usage: mbp.sh [-h] [COMMAND]...
+
+  -h     display this help message
+
+  [COMMAND] is one of:
+  all_to_59             : convert .all to .mb59, uses mbcopy
+  fastfiles             : extracts fast bahymetry and navigation, uses mbdatalist
+  add_meta              : applies metadata, uses mbset
+  get_svp               : extracts sound velocity profile, uses mbsvplist
+  mb_clean              : processes automated quality check, uses mbclean
+  process_data          : creates processed bathymetry files, applying quality check edits
+  grid_processed_data   : Created NETCDF grd file of processed data
+  grid_unprocessed_data : Created NETCDF grd file of unprocessed data
+  batch                 : batch processes these commands :  $( echo $BATCH_COMMANDS | tr '\n' ' ' )
+
+examples:
+
+  mbp.sh all_to_59 fastfiles add_metadata    (converts, extracts fastfiles and applies metadata)
+  mbp.sh batch                               (batch process all data)
+EOF
+	exit 1
+}
+
+_chkmkdir() {
+	if [ ! -d $1 ]; then
+		if [ -f  $1 ]; then
+			echo "$1 exists, but isn't a directory"
+			exit 1
+		fi
+		mkdir -p $1
+	fi
+}
+
+init() {
+	_chkmkdir ${DATA_DIR}
+	_chkmkdir ${WORK_DIR}
+	_chkmkdir ${PROCESSED_DIR}
+	_chkmkdir ${TEMP_DIR}
+}
+
+# Clean up after the script is done
+exit_hook() {
+	cd $orig_dir
+}
+
+# capture the starting directory
+orig_dir=${PWD}
+# clean up on exit
+trap exit_hook EXIT
+
+
+if [ -f cruise.info ]; then 
+	source cruise.info
+else
+	echo "Cruise parameter file 'cruise.info' not found"
+	exit 1
+fi
+
+if [ "$#" == "0" ] || [ "$1" == "-h" ]; then
+	usage
+fi
+
+init
+
+while (( "$#" )); do
+	$1
+	if [ $? -ne 0 ]; then
+        	echo "error processing command: $1"
+		exit $?
+	fi
+	shift
+done
+

@@ -8,10 +8,13 @@ PROCESSED_LIST="processed_list.mb-1"
 DIFF_CPT="diff_2_files.cpt"
 DIFF_GRD="difference_2_files.grd"
 DIFF_PS="difference_2_files.ps"
+SONAR_SUFFIX=.all
+WORK_DIR=~/Indonesia/rr1301-em122/rawdata/data
+UNPROCESSED_SUFFIX=.mb59
 
 all_to_59() {
 	for in_file in $( ls *${SONAR_SUFFIX} ); do
-		out_file=${WORK_DIR}/${in_file%.*}.mb59
+		out_file=${OUT_DIR}/${in_file%.*}.mb59
 		echo Converting ${in_file} to ${out_file} ...
 		# P1 = no ping averaging, -S2 = no data used if ship speed < ~ 1 kts
 		mbcopy -P1 -F58/59 -S2 -I${in_file} -O${out_file}
@@ -123,9 +126,9 @@ grid_processed_data() {
 }
 
 quick_plot() {
-	mbm_plot -F-1 -I${DATA_LIST} -N -G1 -C -Q
-        ./${DATA_LIST}.cmd
-	mv ${DATA_LIST}.ps quick_plot.ps
+	mbm_plot -F-1 -I${UNPROCESSED_LIST} -N -G1  -Q
+        ./${UNPROCESSED_LIST}.cmd
+	mv ${UNPROCESSED_LIST}.ps quick_plot.ps
         display quick_plot.ps
 }
 

@@ -12,10 +12,10 @@ diskin
    ipath $FILE  end
 end
 gains
-    subwb yes type 5 alpha 5 end
+    subwb no type 5 alpha 5 end
 end
 avenor
-   sets 0 .1 addwb yes end
+   sets 0 7 addwb yes end
 end
 wbt
    vel 1500 end
